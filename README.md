@@ -2,6 +2,11 @@
 
 A real-time microservices-based computer vision system that monitors pizza store workers for hygiene compliance violations. The system detects when workers use their hands instead of scoopers to pick up ingredients from designated Regions of Interest (ROIs) using advanced YOLO object detection and state-based violation logic.
 
+## Demo
+
+![Demo](files/demo.gif)
+
+
 ## 🎯 Project Overview
 
 This system addresses critical food safety compliance requirements by automatically monitoring worker behavior in real-time. It processes video feeds to detect hand and scooper interactions within configurable ROI regions, flagging hygiene violations when workers use their hands instead of proper utensils.
