@@ -1,0 +1,76 @@
+# Project specific files
+print_tree.py
+debug_consumer.py
+roi_verification.py
+run_detection_service.py
+test_upload.py
+test_rabbitmq.py
+websocket_test.py
+detection/run_detection_example.py
+quick_debug_script.py
+video_processing_debugger.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js files (React frontend)
+node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+streaming/uploads/
+streaming/processed_videos/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+secrets.py
+config_local.py
+
+# Log files
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup and archive files
+*.bak
+*.backup
+*.old
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
