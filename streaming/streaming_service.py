@@ -18,28 +18,59 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Uplo
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import config
 
 import sys
 sys.path.append('..')
 from shared.rabbitmq_client import RabbitMQClient
 from streaming.config import *
 
+
+
 class WebSocketManager:
     def __init__(self):
+        """
+        __init__
+            Benefit: Initializes WebSocket connection manager with thread-safe connection tracking
+            Input: None
+            Output: WebSocketManager instance
+            Purpose: Sets up connection list and threading lock for managing multiple concurrent WebSocket clients
+        """
         self.active_connections: List[WebSocket] = []
         self.lock = threading.Lock()
     
     async def connect(self, websocket: WebSocket):
+        """
+        connect
+            Benefit: Accepts and registers new WebSocket connection
+            Input: websocket (WebSocket object)
+            Output: None (adds connection to active list)
+            Purpose: Establishes WebSocket connection and adds client to broadcast list
+        """
         await websocket.accept()
         with self.lock:
             self.active_connections.append(websocket)
     
     def disconnect(self, websocket: WebSocket):
+        """
+        disconnect
+            Benefit: Safely removes WebSocket connection from active connections
+            Input: websocket (WebSocket object)
+            Output: None (removes connection from active list)
+            Purpose: Cleans up disconnected clients to prevent broadcast errors
+        """
         with self.lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
     
     async def broadcast(self, message: dict):
+        """
+        broadcast
+            Benefit: Sends message to all active WebSocket connections with error handling
+            Input: message (dict)
+            Output: None (sends message to all clients)
+            Purpose: Distributes real-time updates to all connected frontend clients simultaneously
+        """
         if not self.active_connections:
             return
         
@@ -56,8 +87,16 @@ class WebSocketManager:
                 if conn in self.active_connections:
                     self.active_connections.remove(conn)
 
+
 class HygieneStreamingService:
     def __init__(self):
+        """
+        __init__
+            Benefit: Initializes complete streaming service with all components and directories
+            Input: None
+            Output: HygieneStreamingService instance
+            Purpose: Sets up WebSocket manager, RabbitMQ client, frame buffer, stats tracking, and video processing components
+        """
         self.websocket_manager = WebSocketManager()
         self.rabbitmq_client = None
         self.frame_buffer = deque(maxlen=100)
@@ -96,6 +135,13 @@ class HygieneStreamingService:
     
     def setup_rabbitmq(self):
         """Initialize RabbitMQ connection"""
+        """
+        setup_rabbitmq
+        Benefit: Establishes connection to RabbitMQ message queue system
+        Input: None
+        Output: Boolean (True if connection successful, False otherwise)
+        Purpose: Enables communication with detection service through message queue
+        """
         try:
             self.rabbitmq_client = RabbitMQClient(
                 host=RABBITMQ_HOST,
@@ -110,6 +156,13 @@ class HygieneStreamingService:
     
     def handle_detection_result(self, ch, method, properties, body):
         """Handle incoming hygiene detection results from RabbitMQ"""
+        """
+        handle_detection_result
+            Benefit: Processes incoming detection results from RabbitMQ and updates statistics
+            Input: RabbitMQ message parameters (ch, method, properties, body)
+            Output: None (updates internal stats and broadcasts to WebSocket clients)
+            Purpose: Core message processing that converts detection results to WebSocket messages
+        """
         try:
             data = json.loads(body.decode('utf-8'))
             
@@ -172,9 +225,16 @@ class HygieneStreamingService:
                     print(f"Streaming service total count: {self.stats['total_violations']}")
             
             # Prepare WebSocket message in the exact format frontend expects
+            fps = data.get("fps", 30)  # Default to 30 if not provided
+            frame_number = data.get("frame_number", 0)
+            video_timestamp = frame_number / fps if fps > 0 else 0
+
             websocket_message = {
                 "type": "frame_update",
                 "frame_data": data.get("processed_frame", ""),
+                "frame_number": frame_number,
+                "fps": fps,
+                "video_timestamp": video_timestamp,
                 "hygiene_stats": {
                     "violation_detected": hygiene_data.get("violation_detected", False),
                     "roi1_hand_count": hygiene_data.get("roi1_hand_count", 0),
@@ -184,12 +244,12 @@ class HygieneStreamingService:
                     "current_state": hygiene_data.get("current_state", "No hands detected"),
                     "violation_reason": hygiene_data.get("violation_reason", "No violation detected"),
                     "stabilization_remaining": hygiene_data.get("stabilization_remaining", 0),
-                    "new_violation": hygiene_data.get("new_violation"),  # Can be None or violation object
-                    # FIX: Include the updated total violations count in WebSocket message
-                    "total_violations": self.stats["total_violations"]
+                    "new_violation": hygiene_data.get("new_violation"),
+                    "total_violations": self.stats["total_violations"],
+                    "timing_mode": "video_based"
                 }
             }
-            
+                        
             # Save processed frame for video creation
             self.save_processed_frame(data.get("processed_frame", ""))
             
@@ -213,6 +273,13 @@ class HygieneStreamingService:
     
     def save_processed_frame(self, base64_frame: str):
         """Save processed frame for video compilation"""
+        """
+        save_processed_frame
+            Benefit: Converts base64 frame data to video format and writes to output video file
+            Input: base64_frame (string)
+            Output: None (writes frame to video file)
+            Purpose: Accumulates processed frames into final annotated video for download
+        """
         try:
             if not base64_frame:
                 return
@@ -239,13 +306,21 @@ class HygieneStreamingService:
     
     def initialize_video_writer(self, first_frame):
         """Initialize video writer for processed video"""
+        """
+        initialize_video_writer
+            Benefit: Sets up OpenCV video writer for creating processed video output
+            Input: first_frame (numpy array)
+            Output: None (initializes self.video_writer)
+            Purpose: Configures video encoding parameters and output path for processed video creation
+        """
         try:
+            
             if self.stats["current_video"]:
-                # Create output filename
+                # Keep the full filename (including UUID) for consistency
                 base_name = os.path.splitext(self.stats["current_video"])[0]
                 self.output_video_path = os.path.join(
                     PROCESSED_VIDEOS_DIR, 
-                    f"{base_name}_processed.mp4"
+                    f"processed_{base_name}.mp4"  # Changed naming pattern
                 )
                 
                 # Get frame dimensions
@@ -257,7 +332,7 @@ class HygieneStreamingService:
                 self.video_writer = cv2.VideoWriter(
                     self.output_video_path,
                     fourcc,
-                    20.0,  # 20 FPS
+                    20.0,  # 20 FPS                          # edit here ?
                     (width, height)
                 )
                 
@@ -268,7 +343,7 @@ class HygieneStreamingService:
                     self.video_writer = cv2.VideoWriter(
                         self.output_video_path,
                         fourcc,
-                        20.0,
+                        config.OUTPUT_FPS,                               # edit here !!
                         (width, height)
                     )
                 
@@ -285,6 +360,13 @@ class HygieneStreamingService:
     
     def finalize_processed_video(self):
         """Finalize and save the processed video"""
+        """
+        finalize_processed_video
+            Benefit: Closes video writer and finalizes processed video file
+            Input: None
+            Output: String (path to finalized video) or None if failed
+            Purpose: Completes video file creation and verifies output file integrity
+        """
         try:
             if self.video_writer is not None:
                 print("Finalizing processed video...")
@@ -313,6 +395,13 @@ class HygieneStreamingService:
     
     def start_consuming(self):
         """Start consuming messages from RabbitMQ in a separate thread"""
+        """
+        start_consuming
+            Benefit: Initiates RabbitMQ message consumption in separate thread
+            Input: None
+            Output: None (starts background consumer thread)
+            Purpose: Begins listening for detection results from detection service
+        """
         if self.is_consuming:
             return
         
@@ -325,6 +414,13 @@ class HygieneStreamingService:
     
     def _consume_loop(self):
         """RabbitMQ consumption loop"""
+        """
+        _consume_loop
+            Benefit: Background thread function that continuously consumes RabbitMQ messages
+            Input: None
+            Output: None (runs until stopped)
+            Purpose: Maintains persistent connection to message queue for real-time processing
+        """
         try:
             # Use the detection_results queue from your detection service
             self.rabbitmq_client.channel.queue_declare(queue="detection_results", durable=True)
@@ -340,6 +436,13 @@ class HygieneStreamingService:
     
     def stop_consuming(self):
         """Stop RabbitMQ consumption and finalize video"""
+        """
+        stop_consuming
+            Benefit: Stops RabbitMQ consumption and finalizes video processing
+            Input: None
+            Output: None (stops consumer thread and closes connections)
+            Purpose: Clean shutdown of message consumption and video file completion
+        """
         if self.rabbitmq_client:
             try:
                 self.rabbitmq_client.channel.stop_consuming()
@@ -353,7 +456,13 @@ class HygieneStreamingService:
             self.finalize_processed_video()
     
     def update_processing_status(self, status: str, video_name: str = None):
-        """Update processing status"""
+        """
+        update_processing_status
+            Benefit: Updates processing status with thread-safe statistics modification
+            Input: status (string), video_name (string, optional)
+            Output: None (updates internal stats)
+            Purpose: Tracks processing state for frontend status reporting
+        """
         with self.stats_lock:
             self.stats["processing_status"] = status
             if video_name:
@@ -362,7 +471,13 @@ class HygieneStreamingService:
                 self.stats["start_time"] = datetime.now().isoformat()
     
     def reset_stats(self):
-        """Reset processing statistics and video processing"""
+        """
+        reset_stats
+            Benefit: Clears all processing statistics and video processing state for new video
+            Input: None
+            Output: None (resets internal state)
+            Purpose: Ensures clean state between different video processing sessions
+        """
         with self.stats_lock:
             self.stats = {
                 "processing_status": "idle",
@@ -392,7 +507,14 @@ class HygieneStreamingService:
         print("Stats and video processing state reset")
     
     def trigger_frame_reader(self, video_path: str, roi_config: dict = None):
-        """Trigger frame reader service with ROI configuration"""
+        """
+        trigger_frame_reader
+            Benefit: Launches frame reader service as subprocess with ROI configuration
+            Input: video_path (string), roi_config (dict, optional)
+            Output: Boolean (True if successfully started, False otherwise)
+            Purpose: Initiates video processing pipeline by starting frame extraction service
+        """
+
         try:
             # Store ROI config for this processing session
             self.current_roi_config = roi_config
@@ -424,10 +546,14 @@ class HygieneStreamingService:
             print(f"Failed to trigger frame reader: {e}")
             return False
     
-    
-    
     async def broadcast_worker(self):
-        """Background task to handle WebSocket broadcasting"""
+        """
+        broadcast_worker
+            Benefit: Background async task that handles WebSocket message broadcasting
+            Input: None
+            Output: None (continuously processes broadcast queue)
+            Purpose: Manages asynchronous WebSocket message distribution to connected clients
+        """
         while True:
             try:
                 message = await self.broadcast_queue.get()
@@ -470,9 +596,16 @@ app.add_middleware(
 # Initialize service instance
 streaming_service = HygieneStreamingService()
 
+
 @app.post("/api/upload")
 async def upload_video(file: UploadFile = File(...)):
-    """Upload video file"""
+    """
+    upload_video
+        Benefit: Handles video file upload with format validation and unique naming
+        Input: file (UploadFile)
+        Output: JSONResponse with upload status and filename
+        Purpose: Receives video files from frontend and prepares them for processing
+    """
     try:
         # Validate file format
         file_extension = Path(file.filename).suffix.lower()
@@ -510,6 +643,14 @@ async def upload_video(file: UploadFile = File(...)):
 @app.post("/api/start-stream")
 async def start_stream(data: dict):
     """Start video processing pipeline"""
+    """
+    start_stream
+        Benefit: Initiates video processing pipeline with ROI configuration
+        Input: data (dict with filename and roi_config)
+        Output: JSONResponse with processing status
+        Purpose: Triggers frame reader service and begins hygiene monitoring workflow
+    """
+
     try:
         
         filename = data.get("filename")
@@ -546,6 +687,14 @@ async def start_stream(data: dict):
 @app.get("/api/stats")
 async def get_stats():
     """Get current hygiene monitoring statistics"""
+    """
+    get_stats
+        Benefit: Returns current hygiene monitoring statistics in thread-safe manner
+        Input: None
+        Output: JSONResponse with current processing statistics
+        Purpose: Provides real-time status information to frontend dashboard
+    """
+
     with streaming_service.stats_lock:
         stats_copy = streaming_service.stats.copy()
     
@@ -554,6 +703,13 @@ async def get_stats():
 @app.get("/api/violations")
 async def get_violations():
     """Get violation history"""
+    """
+    get_violations
+        Benefit: Returns violation history data for analysis and reporting
+        Input: None
+        Output: JSONResponse with violation list
+        Purpose: Enables frontend to display violation history and analytics
+    """
     # This would typically come from your detection service or database
     # For now, return empty list
     return JSONResponse({"violations": []})
@@ -561,14 +717,17 @@ async def get_violations():
 @app.get("/api/video-status/{filename}")
 async def check_video_status(filename: str):
     """Check if processed video is ready for download"""
+    """
+    check_video_status
+        Benefit: Verifies if processed video is ready for download
+        Input: filename (string)
+        Output: JSONResponse with file existence and size information
+        Purpose: Allows frontend to check processing completion before offering download
+    """
     try:
         base_name = os.path.splitext(filename)[0]
-        # Remove UUID prefix if present
-        if '_' in base_name:
-            base_name = '_'.join(base_name.split('_')[1:])
-        
-        processed_filename = f"{base_name}_processed.mp4"
-        file_path = os.path.join(PROCESSED_VIDEOS_DIR, processed_filename)
+        processed_filename = f"processed_{base_name}.mp4"  # Match initialize_video_writer
+        file_path = os.path.join(config.PROCESSED_VIDEOS_DIR, processed_filename)
         
         if os.path.exists(file_path):
             file_size = os.path.getsize(file_path)
@@ -595,14 +754,18 @@ async def check_video_status(filename: str):
 @app.get("/api/download/{filename}")
 async def download_processed_video(filename: str):
     """Download processed video file with annotations"""
+    """
+    download_processed_video
+        Benefit: Serves processed video file with proper headers for download
+        Input: filename (string)
+        Output: FileResponse with video file
+        Purpose: Enables users to download annotated video with hygiene monitoring overlays
+    """
+
     try:
         base_name = os.path.splitext(filename)[0]
-        # Remove UUID prefix if present
-        if '_' in base_name:
-            base_name = '_'.join(base_name.split('_')[1:])
-        
-        processed_filename = f"{base_name}_processed.mp4"
-        file_path = os.path.join(PROCESSED_VIDEOS_DIR, processed_filename)
+        processed_filename = f"processed_{base_name}.mp4"  # Match initialize_video_writer
+        file_path = os.path.join(config.PROCESSED_VIDEOS_DIR, processed_filename)
         
         # Check if file exists
         if not os.path.exists(file_path):
@@ -636,6 +799,14 @@ async def download_processed_video(filename: str):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time frame streaming"""
+    """
+    websocket_endpoint
+        Benefit: Manages WebSocket connection lifecycle and real-time frame streaming
+        Input: websocket (WebSocket object)
+        Output: None (maintains persistent connection)
+        Purpose: Provides real-time video streaming and bidirectional communication with frontend
+    """
+
     await streaming_service.websocket_manager.connect(websocket)
     
     try:
@@ -664,6 +835,13 @@ async def websocket_endpoint(websocket: WebSocket):
 # Health check endpoint
 @app.get("/health")
 async def health_check():
+    """
+    health_check
+        Benefit: Provides service health status for monitoring and debugging
+        Input: None
+        Output: JSONResponse with service status
+        Purpose: Enables system monitoring and troubleshooting of service availability
+    """
     return JSONResponse({"status": "healthy", "service": "hygiene_streaming"})
 
 if __name__ == "__main__":

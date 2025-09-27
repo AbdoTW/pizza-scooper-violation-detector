@@ -15,8 +15,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.rabbitmq_client import RabbitMQClient
 from frame_reader.config import *
 
+
 class FrameReaderService:
     def __init__(self):
+        """
+        __init__
+            Benefit: Initializes the Frame Reader Service with RabbitMQ connection and creates necessary directories
+            Input: None
+            Output: FrameReaderService instance
+            Purpose: Sets up the service foundation with message queue client and file system preparation
+        """
         self.rabbitmq_client = RabbitMQClient(
             host=RABBITMQ_HOST,
             port=RABBITMQ_PORT,
@@ -25,13 +33,31 @@ class FrameReaderService:
         )
         self.setup_directories()
     
+    
     def setup_directories(self):
+        """
+        setup_directories
+            Benefit: Ensures all required directories exist before video processing begins
+            Input: None (uses UPLOADS_DIR and TEMP_FRAMES_DIR from config)
+            Output: Creates directories if they don't exist
+            Purpose: Prevents file system errors during video processing
+        """
+
+
         """Create necessary directories if they don't exist"""
         os.makedirs(UPLOADS_DIR, exist_ok=True)
         os.makedirs(TEMP_FRAMES_DIR, exist_ok=True)
     
+    
     def frame_to_base64(self, frame):
-        """Convert OpenCV frame to base64 string"""
+        """
+        frame_to_base64
+            Benefit: Converts video frames into a format that can be transmitted through RabbitMQ
+            Input: frame (OpenCV numpy array - the video frame)
+            Output: Base64 encoded string of the frame or None if conversion fails
+            Purpose: Enables frame data transmission over message queues since binary data needs text encoding
+        """
+
         try:
             _, buffer = cv2.imencode('.jpg', frame)
             frame_base64 = base64.b64encode(buffer).decode('utf-8')
@@ -40,8 +66,16 @@ class FrameReaderService:
             print(f"Error converting frame to base64: {e}")
             return None
     
+    
     def send_reset_signal(self):
-        """Send reset signal to detection service for new video"""
+        """
+        send_reset_signal
+            Benefit: Notifies detection service to clear any previous video state and prepare for new video
+            Input: None
+            Output: Boolean (True if signal sent successfully, False otherwise)
+            Purpose: Ensures clean state transition between different video processing sessions
+        """
+
         try:
             reset_message = {
                 'new_video_start': True,
@@ -62,8 +96,16 @@ class FrameReaderService:
             print(f"Error sending reset signal: {e}")
             return False
     
+    
     def send_end_of_video_signal(self, video_path, total_processed_frames):
-        """Send completion signal to detection results queue"""
+        """
+        send_end_of_video_signal
+            Benefit: Notifies downstream services that video processing is complete with final statistics
+            Input: video_path (string), total_processed_frames (integer)
+            Output: Boolean (True if signal sent successfully, False otherwise)
+            Purpose: Signals completion to streaming service so it can finalize results and stop waiting for more frames
+        """
+
         try:
             completion_message = {
                 'frame_id': str(uuid.uuid4()),
@@ -97,8 +139,16 @@ class FrameReaderService:
             print(f"Error sending end-of-video signal: {e}")
             return False
     
+    
     def process_video(self, video_path, roi_config=None, send_reset=True):
-        """Process video file and extract frames"""
+        """
+        process_video
+            Benefit: Main processing function that reads video, extracts frames at desired rate, and sends them for detection
+            Input: video_path (string), roi_config (dict, optional), send_reset (boolean, default True)
+            Output: Boolean (True if processing completed successfully, False if failed)
+            Purpose: Core video processing pipeline that handles frame extraction, rate control, and message queue communication
+        """
+
         print(f"Starting to process video: {video_path}")
         
         # Check if file exists
@@ -147,7 +197,7 @@ class FrameReaderService:
                     break
                 
                 # Skip frames based on desired frame rate
-                if frame_count % frame_skip == 0:
+                if frame_count % frame_skip == 0:          
                     
                     # Convert to base64
                     frame_base64 = self.frame_to_base64(frame)
@@ -216,7 +266,15 @@ class FrameReaderService:
         
         return True
 
+
 def main():
+    """
+    main
+        Benefit: Command-line interface that validates inputs and orchestrates video processing
+        Input: Command line arguments (video_path, roi-config, new-video flag)
+        Output: System exit code (0 for success, 1 for failure)
+        Purpose: Provides user-friendly CLI interface with argument validation and error handling
+    """
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Frame Reader Service for Hygiene Monitoring')
     parser.add_argument('video_path', help='Path to video file')

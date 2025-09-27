@@ -115,8 +115,10 @@ const App = () => {
                 current_state: data.hygiene_stats.current_state || 'No hands detected',
                 violation_reason: data.hygiene_stats.violation_reason || 'No violation detected',
                 stabilization_remaining: data.hygiene_stats.stabilization_remaining || 0,
-                // FIX: Update total violations count from WebSocket data
-                total_violations: data.hygiene_stats.total_violations || prev.total_violations || 0
+                total_violations: data.hygiene_stats.total_violations || prev.total_violations || 0,
+                // Add context flags if provided by backend
+                video_timestamp: data.video_timestamp || prev.video_timestamp || 0,
+                timing_mode: data.hygiene_stats.timing_mode || 'video_based'
               }));
 
               // Add new violations to history
@@ -421,7 +423,7 @@ const App = () => {
       } else if (stats.stabilization_remaining > 0) {
         return {
           icon: <Clock className="w-6 h-6 text-yellow-500" />,
-          text: `CHECKING... ${stats.stabilization_remaining.toFixed(1)}s`,
+          text: `CHECKING... ${stats.stabilization_remaining.toFixed(1)}s video time`,
           bgClass: "bg-yellow-50 border-yellow-200", 
           textClass: "text-yellow-700"
         };
@@ -478,7 +480,7 @@ const App = () => {
           </p>
           {stats.stabilization_remaining > 0 && (
             <p className="text-orange-600">
-              Stabilizing: {stats.stabilization_remaining.toFixed(1)}s
+              Stabilizing: {stats.stabilization_remaining.toFixed(1)}s (video)
             </p>
           )}
         </div>

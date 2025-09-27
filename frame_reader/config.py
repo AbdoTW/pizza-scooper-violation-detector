@@ -11,7 +11,7 @@ RAW_FRAMES_QUEUE = 'raw_frames'
 DETECTION_RESULTS_QUEUE = 'detection_results'
 
 # Video Processing Settings
-FRAME_RATE = 10  # Extract 10 frames per second
+FRAME_RATE = 30  # Extract 30 frames per second  (original video fps) = no frames are skipped
 MAX_FRAME_WIDTH = 1280  # Resize frames for faster processing
 MAX_FRAME_HEIGHT = 720
 

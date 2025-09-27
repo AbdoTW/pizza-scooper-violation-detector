@@ -29,7 +29,7 @@ ROI2_SCOOPER_TRANSITION_DELAY = 1.0  # seconds
 
 # Model Configuration
 MODELS_DIR = 'detection/models'
-YOLO_MODEL_PATH = 'yolo_weights/best_scooper_pizzaStoreLarge_largeModel.pt'
+YOLO_MODEL_PATH = "../models/best_scooper_pizzaStoreLarge_largeModel.pt"
 FALLBACK_MODEL_PATH = 'yolov8n.pt'
 
 # ROI Configurations for different videos
@@ -56,12 +56,6 @@ ROI_CONFIGURATIONS = {
     }
 }
 
-# Display Configuration
-DISPLAY_WIDTH = 1920
-DISPLAY_HEIGHT = 1080
-
-# Target Classes
-TARGET_CLASSES = ['scooper', 'hand']
 
 # Color Palettes for Visualization
 ROI1_HAND_COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255)]
@@ -69,11 +63,3 @@ ROI1_SCOOPER_COLORS = [(0, 165, 255), (0, 255, 255), (255, 100, 100), (100, 255,
 ROI2_HAND_COLORS = [(128, 0, 0), (0, 128, 0), (0, 0, 128), (128, 128, 0), (128, 0, 128)]
 ROI2_SCOOPER_COLORS = [(0, 80, 128), (0, 128, 128), (128, 50, 50), (50, 128, 50), (50, 50, 128)]
 
-# ROI Drawing Colors
-ROI1_COLOR = (0, 255, 255)  # Yellow
-ROI2_COLOR = (255, 0, 255)  # Magenta
-
-# Status Colors
-VIOLATION_COLOR = (0, 0, 255)      # Red
-CHECKING_COLOR = (0, 165, 255)     # Orange
-COMPLIANT_COLOR = (0, 255, 0)      # Green

@@ -24,7 +24,7 @@ DETECTION_RESULTS_QUEUE = "detection_results"
 SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.webm']
 
 # Video Processing Configuration
-OUTPUT_FPS = 20.0
+OUTPUT_FPS = 30
 VIDEO_CODEC = 'H264'  # Primary codec
 FALLBACK_CODEC = 'XVID'  # Fallback codec
 
