@@ -518,30 +518,39 @@ class HygieneStreamingService:
         try:
             # Store ROI config for this processing session
             self.current_roi_config = roi_config
-            
+
             # Create command to run frame reader
             frame_reader_path = os.path.join("..", "frame_reader", "frame_reader_service.py")
-            
+
             # Prepare command arguments
             cmd = ["python", frame_reader_path, video_path]
-            
+
             # If ROI config provided, pass it as JSON string
             if roi_config:
                 cmd.extend(["--roi-config", json.dumps(roi_config)])
-            
-            # Run frame reader as subprocess
+
+            # Define log file paths
+            stdout_log_path = os.path.join(os.path.dirname(__file__), "frame_reader_out.log")
+            stderr_log_path = os.path.join(os.path.dirname(__file__), "frame_reader_err.log")
+
+            # Open log files and start subprocess
+            out_log = open(stdout_log_path, "w")
+            err_log = open(stderr_log_path, "w")
+
             process = subprocess.Popen(
                 cmd,
                 cwd=os.path.dirname(__file__),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stdout=out_log,
+                stderr=err_log
             )
-            
+
             print(f"Started frame reader for: {video_path}")
             if roi_config:
                 print(f"ROI Config: {roi_config.get('label', 'Custom')}")
-            
+            print(f"Logs: {stdout_log_path} (stdout), {stderr_log_path} (stderr)")
+
             return True
+
         except Exception as e:
             print(f"Failed to trigger frame reader: {e}")
             return False
