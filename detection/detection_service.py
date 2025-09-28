@@ -143,7 +143,7 @@ class StateBasedHygieneViolationDetector:
         
         # ROI-1 transition delay mechanism - NOW TIMESTAMP BASED
         self.roi1_disappear_timestamp = None
-        self.roi1_to_roi2_delay = 0.3  # 0.5 second delay
+        self.roi1_to_roi2_delay = 0.35  # 0.5 second delay
         self.last_roi1_state_timestamp = None
         # to solve disappearing from roi1 you need to train yolo model to overfitt on this part so any hand with any shape can detect it 
         # so in this case the roi1_to_roi2_delay will not be important 
@@ -446,7 +446,7 @@ class StateBasedHygieneViolationDetector:
         self.violation_start_timestamp = None
         self.violation_active = False
         self.potential_violation_start = None
-        self.stabilization_period = 0.5
+        self.stabilization_period = 0.4
         
         # Reset state machine
         self.state_history = deque(maxlen=5)
