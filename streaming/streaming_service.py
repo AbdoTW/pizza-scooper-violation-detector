@@ -127,7 +127,7 @@ class HygieneStreamingService:
         self.expected_total_frames = 0
         self.received_frame_count = 0
         self.last_frame_timestamp = None
-        self.finalization_timeout = 8.0  # seconds to wait after last frame
+        self.finalization_timeout = 30.0  # seconds to wait after last frame
         self.finalization_timer = None
         self.video_finalized = False
         self.frame_numbers_received = set()  # Track which frames we've received
@@ -159,8 +159,42 @@ class HygieneStreamingService:
             print(f"RabbitMQ setup failed: {e}")
             return False
     
+    def cleanup_previous_files(self):     # Clean up streaming/uploads & streaming/processed_videos
+        """Clean up previous upload and processed video files"""
+        try:
+            # Clean uploads directory
+            uploads_cleaned = 0
+            if os.path.exists(UPLOADS_DIR):
+                for filename in os.listdir(UPLOADS_DIR):
+                    file_path = os.path.join(UPLOADS_DIR, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        uploads_cleaned += 1
+            
+            # Clean processed videos directory
+            processed_cleaned = 0
+            if os.path.exists(PROCESSED_VIDEOS_DIR):
+                for filename in os.listdir(PROCESSED_VIDEOS_DIR):
+                    file_path = os.path.join(PROCESSED_VIDEOS_DIR, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        processed_cleaned += 1
+            
+            print(f"🧹 Cleanup complete: {uploads_cleaned} uploads, {processed_cleaned} processed videos removed")
+            return True
+            
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+            return False  
+    
     def handle_detection_result(self, ch, method, properties, body):
-        """Enhanced detection result handler with proper video synchronization"""
+        """
+        handle_detection_result
+            Benefit: Processes incoming detection results from RabbitMQ and updates statistics
+            Input: RabbitMQ message parameters (ch, method, properties, body)
+            Output: None (updates internal stats and broadcasts to WebSocket clients)
+            Purpose: Core message processing that converts detection results to WebSocket messages
+        """
         try:
             data = json.loads(body.decode('utf-8'))
             current_time = time.time()
@@ -307,6 +341,7 @@ class HygieneStreamingService:
             print(f"Error handling detection result: {e}")
             import traceback
             traceback.print_exc()
+    
     
     def _start_finalization_timer(self):
         """Start a timer that will finalize video after timeout"""
@@ -656,6 +691,8 @@ class HygieneStreamingService:
         # Clear frame buffer
         self.frame_buffer.clear()
         
+        # Clean up streaming/uploads & streaming/processed_videos
+        # self.cleanup_previous_files()
         print("📝 Enhanced stats and video processing state reset complete")
     
     def trigger_frame_reader(self, video_path: str, roi_config: dict = None):
@@ -778,6 +815,9 @@ async def upload_video(file: UploadFile = File(...)):
                 status_code=400, 
                 detail=f"Unsupported format. Supported: {supported_formats}"
             )
+        # Clean up streaming/uploads & streaming/processed_videos
+        print(f"🧹 Cleaning up previous files before new upload...")
+        streaming_service.cleanup_previous_files()
         
         # Generate unique filename
         unique_filename = f"{uuid.uuid4().hex[:8]}_{file.filename}"
