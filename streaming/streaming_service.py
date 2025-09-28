@@ -273,13 +273,6 @@ class HygieneStreamingService:
     
     def save_processed_frame(self, base64_frame: str):
         """Save processed frame for video compilation"""
-        """
-        save_processed_frame
-            Benefit: Converts base64 frame data to video format and writes to output video file
-            Input: base64_frame (string)
-            Output: None (writes frame to video file)
-            Purpose: Accumulates processed frames into final annotated video for download
-        """
         try:
             if not base64_frame:
                 return
@@ -293,19 +286,19 @@ class HygieneStreamingService:
                 print("Warning: Failed to decode frame")
                 return
             
-            # Initialize video writer on first frame
-            if self.video_writer is None:
-                self.initialize_video_writer(frame)
-            
-            # Write frame to video
+            # Video writer should already be initialized - just write the frame
             if self.video_writer is not None and self.video_writer.isOpened():
                 self.video_writer.write(frame)
+            else:
+                print("Warning: Video writer not initialized - frame skipped")
                 
         except Exception as e:
             print(f"Error saving processed frame: {e}")
     
-    def initialize_video_writer(self, first_frame):
-        """Initialize video writer for processed video"""
+    
+    
+    def initialize_video_writer_early(self, filename: str, width: int, height: int, original_fps: float):
+        """Initialize video writer before processing starts"""
         """
         initialize_video_writer
             Benefit: Sets up OpenCV video writer for creating processed video output
@@ -314,49 +307,50 @@ class HygieneStreamingService:
             Purpose: Configures video encoding parameters and output path for processed video creation
         """
         try:
+            # Generate output path
+            base_name = os.path.splitext(filename)[0]
+            self.output_video_path = os.path.join(
+                PROCESSED_VIDEOS_DIR, 
+                f"processed_{base_name}.mp4"
+            )
             
-            if self.stats["current_video"]:
-                # Keep the full filename (including UUID) for consistency
-                base_name = os.path.splitext(self.stats["current_video"])[0]
-                self.output_video_path = os.path.join(
-                    PROCESSED_VIDEOS_DIR, 
-                    f"processed_{base_name}.mp4"  # Changed naming pattern
-                )
-                
-                # Get frame dimensions
-                height, width = first_frame.shape[:2]
-                
-                # Use H.264 codec for better compatibility
-                fourcc = cv2.VideoWriter_fourcc(*'H264')
-                
+            # Calculate appropriate output FPS
+            # Use original FPS for now - can be adjusted based on frame processing rate if needed
+            output_fps = original_fps
+            
+            # Use H.264 codec for better compatibility
+            fourcc = cv2.VideoWriter_fourcc(*'H264')
+            
+            self.video_writer = cv2.VideoWriter(
+                self.output_video_path,
+                fourcc,
+                output_fps,
+                (width, height)
+            )
+            
+            # Verify video writer is opened
+            if not self.video_writer.isOpened():
+                print("H264 codec failed, trying XVID...")
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
                 self.video_writer = cv2.VideoWriter(
                     self.output_video_path,
                     fourcc,
-                    20.0,  # 20 FPS                          # edit here ?
+                    output_fps,
                     (width, height)
                 )
+            
+            if self.video_writer.isOpened():
+                print(f"Video writer initialized EARLY: {self.output_video_path}")
+                print(f"Dimensions: {width}x{height}, FPS: {output_fps}")
+            else:
+                print(f"Failed to initialize video writer early")
+                self.video_writer = None
                 
-                # Verify video writer is opened
-                if not self.video_writer.isOpened():
-                    print("H264 codec failed, trying XVID...")
-                    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                    self.video_writer = cv2.VideoWriter(
-                        self.output_video_path,
-                        fourcc,
-                        config.OUTPUT_FPS,                               # edit here !!
-                        (width, height)
-                    )
-                
-                if self.video_writer.isOpened():
-                    print(f"Video writer initialized: {self.output_video_path}")
-                    print(f"Dimensions: {width}x{height}")
-                else:
-                    print(f"Failed to initialize video writer")
-                    self.video_writer = None
-                    
         except Exception as e:
-            print(f"Error initializing video writer: {e}")
+            print(f"Error initializing video writer early: {e}")
             self.video_writer = None
+    
+
     
     def finalize_processed_video(self):
         """Finalize and save the processed video"""
@@ -523,7 +517,7 @@ class HygieneStreamingService:
             frame_reader_path = os.path.join("..", "frame_reader", "frame_reader_service.py")
 
             # Prepare command arguments
-            cmd = ["python", frame_reader_path, video_path]
+            cmd = ["python", frame_reader_path, video_path, "--new-video"]
 
             # If ROI config provided, pass it as JSON string
             if roi_config:
@@ -652,16 +646,7 @@ async def upload_video(file: UploadFile = File(...)):
 @app.post("/api/start-stream")
 async def start_stream(data: dict):
     """Start video processing pipeline"""
-    """
-    start_stream
-        Benefit: Initiates video processing pipeline with ROI configuration
-        Input: data (dict with filename and roi_config)
-        Output: JSONResponse with processing status
-        Purpose: Triggers frame reader service and begins hygiene monitoring workflow
-    """
-
     try:
-        
         filename = data.get("filename")
         roi_config = data.get("roi_config")
         
@@ -672,8 +657,22 @@ async def start_stream(data: dict):
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Video file not found")
         
+        # Get video properties BEFORE starting processing
+        cap = cv2.VideoCapture(file_path)
+        if not cap.isOpened():
+            raise HTTPException(status_code=400, detail="Cannot open video file")
+        
+        # Extract video properties
+        original_fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
+        
         # Update status
         streaming_service.update_processing_status("processing", filename)
+        
+        # Initialize video writer BEFORE starting frame reader
+        streaming_service.initialize_video_writer_early(filename, frame_width, frame_height, original_fps)
         
         # Trigger frame reader with ROI configuration
         if not streaming_service.trigger_frame_reader(file_path, roi_config):
