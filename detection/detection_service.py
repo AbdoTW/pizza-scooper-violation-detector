@@ -134,7 +134,7 @@ class StateBasedHygieneViolationDetector:
         self.violation_start_timestamp = None
         self.violation_active = False
         self.potential_violation_start = None
-        self.stabilization_period = 1.0  # 1 second stabilization period
+        self.stabilization_period = 0.5  # 1 second stabilization period
         
         # State machine components
         self.state_history = deque(maxlen=5)
@@ -143,14 +143,14 @@ class StateBasedHygieneViolationDetector:
         
         # ROI-1 transition delay mechanism - NOW TIMESTAMP BASED
         self.roi1_disappear_timestamp = None
-        self.roi1_to_roi2_delay = 0.6  # 0.5 second delay
+        self.roi1_to_roi2_delay = 0.3  # 0.5 second delay
         self.last_roi1_state_timestamp = None
         # to solve disappearing from roi1 you need to train yolo model to overfitt on this part so any hand with any shape can detect it 
         # so in this case the roi1_to_roi2_delay will not be important 
         
         # ROI-2 state transition delay mechanism - NOW TIMESTAMP BASED
         self.roi2_scooper_disappear_timestamp = None
-        self.roi2_with_to_without_delay = 1.0 # this value must to be more than or equal to self.stabilization_period
+        self.roi2_with_to_without_delay = 0.5 # this value must to be more than or equal to self.stabilization_period
         self.last_roi2_with_scooper_timestamp = None
         
     def _determine_current_state(self, roi1_hands, roi2_hands, roi1_scoopers, roi2_scoopers, current_timestamp):
@@ -446,7 +446,7 @@ class StateBasedHygieneViolationDetector:
         self.violation_start_timestamp = None
         self.violation_active = False
         self.potential_violation_start = None
-        self.stabilization_period = 1.0
+        self.stabilization_period = 0.5
         
         # Reset state machine
         self.state_history = deque(maxlen=5)
@@ -455,12 +455,12 @@ class StateBasedHygieneViolationDetector:
         
         # Reset ROI-1 transition delay mechanism
         self.roi1_disappear_timestamp = None
-        self.roi1_to_roi2_delay = 0.6
+        self.roi1_to_roi2_delay = 0.35
         self.last_roi1_state_timestamp = None
         
         # Reset ROI-2 state transition delay mechanism
         self.roi2_scooper_disappear_timestamp = None
-        self.roi2_with_to_without_delay = 1.0
+        self.roi2_with_to_without_delay = 0.5
         self.last_roi2_with_scooper_timestamp = None
         
         print(f"✅ Violation detector reset complete - violations count: {len(self.violations)}")
