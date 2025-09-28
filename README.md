@@ -16,7 +16,6 @@ This system addresses critical food safety compliance requirements by automatica
 - **Intelligent Violation Detection**: Distinguish between legitimate and violation behaviors
 - **Multi-ROI Support**: Handle different store layouts and ingredient stations
 - **Scalable Architecture**: Microservices design for production deployment
-- **Live Monitoring Dashboard**: Real-time visualization and alerting
 
 ## 🏗️ System Architecture
 
@@ -60,14 +59,8 @@ This system addresses critical food safety compliance requirements by automatica
 - **Multi-Object Tracking**: Persistent tracking across frames with distance-based association
 - **State-Based Violation Logic**: Sophisticated state machine for accurate violation detection
 - **ROI Management**: Configurable regions for different store layouts
-- **Stabilization Periods**: 2-second stabilization to reduce false positives
+- **Stabilization Periods**: stabilization periods to reduce false positives
 
-### Advanced Capabilities
-- **Edge Case Handling**: Distinguishes between cleaning and ingredient handling
-- **Multi-Worker Support**: Tracks multiple workers simultaneously
-- **Temporal Analysis**: State history tracking for complex violation patterns
-- **Real-time Streaming**: WebSocket-based live video with annotations
-- **Processed Video Export**: Downloadable videos with violation annotations
 
 ### Technical Features
 - **Horizontal Scaling**: Microservices architecture with message queuing
@@ -93,7 +86,6 @@ This system addresses critical food safety compliance requirements by automatica
 - **Lucide React**: Icon components
 
 ### Infrastructure
-- **Docker**: Containerization (optional)
 - **RabbitMQ**: Message queuing system
 - **Base64**: Image encoding for message transmission
 
@@ -128,7 +120,7 @@ This system addresses critical food safety compliance requirements by automatica
    sudo systemctl enable rabbitmq-server
    ```
 
-4. **Configure environment variables**
+4. **Configure environment variables (Setting your config)**
    ```bash
    # Copy and edit configuration files
    cp detection/config.py.example detection/config.py
@@ -180,9 +172,8 @@ npm start
 1. Open the web interface at `http://localhost:3000`
 2. Select appropriate ROI configuration
 3. Upload a video file (MP4, AVI, MOV, MKV, WebM)
-4. Click "Start Processing" to begin real-time analysis
-5. Monitor violations in the live dashboard
-6. Download processed video with annotations
+4. Monitor violations in the live dashboard
+5. Download processed video with annotations
 
 ### 3. Monitor Results
 
@@ -221,17 +212,9 @@ HAND_TRACKER_MAX_DISAPPEARED = 90
 HAND_TRACKER_MAX_DISTANCE = 200
 
 # Violation detection
-STABILIZATION_PERIOD = 2.0  # seconds
-ROI1_TO_ROI2_DELAY = 1.0    # seconds
+STABILIZATION_PERIOD = 0.5  # seconds
+ROI1_TO_ROI2_DELAY = 0.35    # seconds
 ```
-
-## 📊 Performance Metrics
-
-- **Detection Accuracy**: 95%+ for hand and scooper detection
-- **Processing Speed**: Real-time processing at 10 FPS
-- **Latency**: Sub-second violation detection and alerting
-- **Scalability**: Horizontal scaling with microservices architecture
-- **Reliability**: Fault-tolerant message processing
 
 ## 🔧 API Endpoints
 
@@ -243,54 +226,6 @@ ROI1_TO_ROI2_DELAY = 1.0    # seconds
 - `GET /api/violations` - Get violation history
 - `GET /api/download/{filename}` - Download processed video
 - `WebSocket /ws` - Real-time video streaming
-
-### Example API Usage
-
-```bash
-# Upload video
-curl -X POST "http://localhost:8003/api/upload" \
-  -F "file=@video.mp4"
-
-# Start processing
-curl -X POST "http://localhost:8003/api/start-stream" \
-  -H "Content-Type: application/json" \
-  -d '{"filename": "video.mp4", "roi_config": {...}}'
-```
-
-## 🧪 Testing
-
-### Unit Tests
-```bash
-# Run detection service tests
-cd detection
-python -m pytest tests/
-
-# Run streaming service tests
-cd streaming
-python -m pytest tests/
-```
-
-### Integration Tests
-```bash
-# Test full pipeline
-python test_integration.py
-```
-
-## 📈 Monitoring and Logging
-
-The system includes comprehensive logging and monitoring:
-
-- **Service Health Checks**: Built-in health endpoints
-- **Performance Metrics**: Processing time and accuracy tracking
-- **Error Handling**: Graceful error recovery and reporting
-- **Debug Information**: Detailed logging for troubleshooting
-
-## 🔒 Security Considerations
-
-- **Input Validation**: File type and size validation
-- **Error Handling**: Secure error messages without sensitive data
-- **Resource Limits**: Memory and processing time limits
-- **Access Control**: API endpoint protection (can be extended)
 
 ## 🤝 Contributing
 
