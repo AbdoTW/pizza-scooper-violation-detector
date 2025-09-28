@@ -126,7 +126,7 @@ const App = () => {
           if (data.type === 'processing_complete') {
             console.log('Video processing completed!');
             setUploadStatus('completed');
-            showSuccess('Video processing completed! You can now download the processed video.');
+            // showSuccess('Video processing completed! You can now download the processed video.');
             
             if (wsRef.current) {
               wsRef.current.close();
@@ -180,7 +180,7 @@ const App = () => {
         originalName: file.name
       });
       setUploadStatus('uploaded');
-      showSuccess('File uploaded successfully!');
+      // showSuccess('File uploaded successfully!');
       
       await startProcessing(result.filename);
       
@@ -211,7 +211,7 @@ const App = () => {
 
       setUploadStatus('processing');
       connectWebSocket();
-      showSuccess('Processing started!');
+      // showSuccess('Processing started!');
 
     } catch (error) {
       console.error('Start processing error:', error);
@@ -259,7 +259,7 @@ const App = () => {
         document.body.removeChild(a);
       }, 100);
       
-      showSuccess(`Download started! (${statusData.file_size_mb}MB)`);
+      // showSuccess(`Download started! (${statusData.file_size_mb}MB)`);
 
     } catch (error) {
       console.error('Download error:', error);
@@ -410,11 +410,7 @@ const App = () => {
           <p className="text-gray-700 truncate" title={violationReason}>
             <span className="font-medium">Reason:</span> {violationReason}
           </p>
-          {stabilizationRemaining > 0 && (
-            <p className="text-orange-600">
-              Stabilizing: {stabilizationRemaining.toFixed(1)}s (video)
-            </p>
-          )}
+          
         </div>
       </div>
     </div>
@@ -541,14 +537,14 @@ const App = () => {
             className="bg-black flex items-center justify-center relative w-full"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            style={{ height: '650px', maxHeight: '650px' }}
+            style={{ height: '670px', maxHeight: '670px' }}
           >
             {currentFrame ? (
               <img 
                 src={currentFrame} 
                 alt="Processed frame with hygiene monitoring" 
                 className="max-w-full max-h-full object-contain"
-                style={{ maxHeight: '650px' }}
+                style={{ maxHeight: '670px' }}
               />
             ) : (
               <div className="text-white text-center">
