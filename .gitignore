@@ -9,7 +9,7 @@ websocket_test.py
 detection/run_detection_example.py
 quick_debug_script.py
 video_processing_debugger.py
-
+get_coordinates.ipynb
 # Python
 __pycache__/
 *.pyc
