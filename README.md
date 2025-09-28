@@ -97,6 +97,16 @@ This system addresses critical food safety compliance requirements by automatica
 - RabbitMQ server
 - Git
 
+### Download YOLO model weights (IMPORTANT)
+
+   You will need the trained YOLO model weights to run the detection service.  
+   The weights are available at the following (private) link:  
+   [Download YOLO Weights](https://drive.google.com/file/d/1drAO3lCj5ZTSwXxT6b83O8YODIocJKVM/view?usp=sharing)  
+
+   After downloading, place the weights file into: 
+   ```pizza-scooper-violation-detector/models/```
+
+
 ### Backend Setup
 
 1. **Clone the repository**
